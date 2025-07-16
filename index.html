@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TSVファイル突合ツール</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+        
+        .features {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        .feature {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #667eea;
+            font-weight: 500;
+        }
+        
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .file-upload {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+            background: rgba(102, 126, 234, 0.05);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .file-upload::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s;
+        }
+        
+        .file-upload:hover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .file-upload:hover::before {
+            left: 100%;
+        }
+        
+        .file-upload.dragover {
+            border-color: #764ba2;
+            background: rgba(118, 75, 162, 0.2);
+            transform: scale(1.02);
+        }
+        
+        .file-upload input[type="file"] {
+            display: none;
+        }
+        
+        .file-upload label {
+            display: block;
+            cursor: pointer;
+            color: #667eea;
+            font-size: 1.1rem;
+            font-weight: 600;
+            z-index: 1;
+            position: relative;
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.7;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #333;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            align-items: end;
+            justify-content: center;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+        
+        select, input, button {
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+        
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.6s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        button:disabled:hover::before {
+            left: -100%;
+        }
+        
+        .results {
+            margin-top: 30px;
+        }
+        
+        .result-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            background: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .tab.active {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        
+        .tab:hover:not(.active) {
+            background: #e9ecef;
+            transform: translateY(-1px);
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            background: white;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        tbody tr:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+        
+        .diff-added {
+            background: rgba(76, 175, 80, 0.1);
+            border-left: 4px solid #4caf50;
+        }
+        
+        .diff-removed {
+            background: rgba(244, 67, 54, 0.1);
+            border-left: 4px solid #f44336;
+        }
+        
+        .diff-changed {
+            background: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid #ffc107;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .export-btn {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .export-btn:hover {
+            background: linear-gradient(45deg, #218838, #1a9b7c);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .error {
+            color: #dc3545;
+            background: rgba(220, 53, 69, 0.1);
+            border: 1px solid rgba(220, 53, 69, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: 500;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #667eea;
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .result-tabs {
+                flex-direction: column;
+            }
+            
+            .export-buttons {
+                flex-direction: column;
+            }
+            
+            .features {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+        
+        /* ダークモード対応 */
+        @media (prefers-color-scheme: dark) {
+            .container {
+                background: rgba(30, 30, 30, 0.95);
+                color: #e0e0e0;
+            }
+            
+            h1 {
+                color: #f0f0f0;
+            }
+            
+            .subtitle {
+                color: #b0b0b0;
+            }
+            
+            select, input {
+                background: #2a2a2a;
+                color: #e0e0e0;
+                border-color: #555;
+            }
+            
+            .tab {
+                background: #2a2a2a;
+                color: #e0e0e0;
+                border-color: #555;
+            }
+            
+            .table-container, .stat-card {
+                background: #2a2a2a;
+            }
+            
+            th, td {
+                border-color: #555;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 TSVファイル突合ツール</h1>
+            <p class="subtitle">2つのTSVファイルを比較して差分を検出</p>
+            <div class="features">
+                <div class="feature">🔄 ドラッグ&ドロップ対応</div>
+                <div class="feature">📈 統計情報表示</div>
+                <div class="feature">💾 CSV出力</div>
+                <div class="feature">📱 モバイル対応</div>
+            </div>
+        </div>
+        
+        <div class="upload-section">
+            <div class="file-upload" id="upload1">
+                <div class="upload-icon">📄</div>
+                <label for="file1">
+                    ファイル1をアップロード<br>
+                    <small>TSVファイルをドラッグ&ドロップまたはクリック</small>
+                </label>
+                <input type="file" id="file1" accept=".tsv,.txt,.csv">
+                <div class="file-info" id="info1"></div>
+            </div>
+            
+            <div class="file-upload" id="upload2">
+                <div class="upload-icon">📄</div>
+                <label for="file2">
+                    ファイル2をアップロード<br>
+                    <small>TSVファイルをドラッグ&ドロップまたはクリック</small>
+                </label>
+                <input type="file" id="file2" accept=".tsv,.txt,.csv">
+                <div class="file-info" id="info2"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="keyColumn">🔑 キー列</label>
+                <select id="keyColumn">
+                    <option value="">キー列を選択してください</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="compareType">🔍 表示フィルター</label>
+                <select id="compareType">
+                    <option value="all">全ての差分</option>
+                    <option value="added">追加のみ</option>
+                    <option value="removed">削除のみ</option>
+                    <option value="changed">変更のみ</option>
+                </select>
+            </div>
+            
+            <button id="compareBtn" onclick="compareFiles()">🚀 比較実行</button>
+            <button id="clearBtn" onclick="clearAll()">🗑️ クリア</button>
+        </div>
+        
+        <div class="results" id="results" style="display: none;">
+            <div class="stats" id="stats"></div>
+            
+            <div class="result-tabs">
+                <div class="tab active" onclick="showTab('summary')">📋 サマリー</div>
+                <div class="tab" onclick="showTab('details')">📊 詳細</div>
+                <div class="tab" onclick="showTab('added')">➕ 追加</div>
+                <div class="tab" onclick="showTab('removed')">➖ 削除</div>
+                <div class="tab" onclick="showTab('changed')">🔄 変更</div>
+            </div>
+            
+            <div class="tab-content active" id="summary"></div>
+            <div class="tab-content" id="details"></div>
+            <div class="tab-content" id="added"></div>
+            <div class="tab-content" id="removed"></div>
+            <div class="tab-content" id="changed"></div>
+            
+            <div class="export-buttons">
+                <button class="export-btn" onclick="exportToCSV('all')">📁 全結果をCSV出力</button>
+                <button class="export-btn" onclick="exportToCSV('diff')">🔍 差分のみCSV出力</button>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2025 TSVファイル突合ツール | 
+            <a href="https://github.com" target="_blank">GitHub</a> で公開中</p>
+        </div>
+    </div>
+
+    <script>
+        let data1 = [];
+        let data2 = [];
+        let headers1 = [];
+        let headers2 = [];
+        let comparisonResult = null;
+
+        // ページ読み込み時の初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            setupFileUpload();
+            showWelcomeMessage();
+        });
+
+        function showWelcomeMessage() {
+            console.log('🎉 TSVファイル突合ツールが正常に読み込まれました！');
+        }
+
+        // ファイルアップロード処理
+        function setupFileUpload() {
+            const fileInputs = ['file1', 'file2'];
+            const uploadAreas = ['upload1', 'upload2'];
+            
+            fileInputs.forEach((inputId, index) => {
+                const input = document.getElementById(inputId);
+                const uploadArea = document.getElementById(uploadAreas[index]);
+                
+                input.addEventListener('change', (e) => handleFileSelect(e, index + 1));
+                
+                // ドラッグ&ドロップ
+                uploadArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.add('dragover');
+                });
+                
+                uploadArea.addEventListener('dragleave', () => {
+                    uploadArea.classList.remove('dragover');
+                });
+                
+                uploadArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    uploadArea.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        input.files = files;
+                        handleFileSelect({ target: input }, index + 1);
+                    }
+                });
+            });
+        }
+
+        function handleFileSelect(event, fileNumber) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            // ファイル形式チェック
+            const fileName = file.name.toLowerCase();
+            const validExtensions = ['.tsv', '.txt', '.csv'];
+            const isValidFile = validExtensions.some(ext => fileName.endsWith(ext));
+            
+            if (!isValidFile) {
+                alert('TSV、TXT、またはCSVファイルを選択してください。');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const content = e.target.result;
+                    parseTSV(content, fileNumber, fileName);
+                    updateFileInfo(file, fileNumber);
+                } catch (error) {
+                    showError(`ファイル${fileNumber}の読み込みに失敗しました: ${error.message}`);
+                }
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parseTSV(content, fileNumber, fileName) {
+            const lines = content.trim().split('\n');
+            if (lines.length < 2) {
+                throw new Error('ファイルにはヘッダー行とデータ行が必要です');
+            }
+            
+            // 区切り文字を自動判定
+            let delimiter = '\t';
+            if (fileName.endsWith('.csv')) {
+                delimiter = ',';
+            } else if (content.includes('\t')) {
+                delimiter = '\t';
+            } else if (content.includes(',')) {
+                delimiter = ',';
+            }
+            
+            const headers = lines[0].split(delimiter).map(h => h.trim());
+            const data = lines.slice(1).map((line, index) => {
+                const values = line.split(delimiter);
+                if (values.length !== headers.length) {
+                    console.warn(`行 ${index + 2}: 列数が一致しません`);
+                }
+                const row = {};
+                headers.forEach((header, i) => {
+                    row[header] = (values[i] || '').trim();
+                });
+                return row;
+            }).filter(row => Object.values(row).some(val => val !== ''));
+            
+            if (fileNumber === 1) {
+                data1 = data;
+                headers1 = headers;
+            } else {
+                data2 = data;
+                headers2 = headers;
+            }
+            
+            updateKeyColumnOptions();
+            console.log(`ファイル${fileNumber}を正常に読み込みました: ${data.length}行`);
+        }
+
+        function updateFileInfo(file, fileNumber) {
+            const info = document.getElementById(`info${fileNumber}`);
+            const data = fileNumber === 1 ? data1 : data2;
+            const headers = fileNumber === 1 ? headers1 : headers2;
+            
+            info.innerHTML = `
+                <div style="font-weight: 600; color: #4caf50;">✅ ${file.name}</div>
+                <div style="margin-top: 5px; font-size: 0.8rem; color: #666;">
+                    📊 ${data.length} 行 × ${headers.length} 列
+                </div>
+            `;
+        }
+
+        function updateKeyColumnOptions() {
+            const keyColumn = document.getElementById('keyColumn');
+            keyColumn.innerHTML = '<option value="">キー列を選択してください</option>';
+            
+            if (headers1.length > 0 && headers2.length > 0) {
+                // 共通の列のみ表示
+                const commonHeaders = headers1.filter(h => headers2.includes(h));
+                if (commonHeaders.length === 0) {
+                    keyColumn.innerHTML = '<option value="">共通の列が見つかりません</option>';
+                    return;
+                }
+                
+                commonHeaders.forEach(header => {
+                    const option = document.createElement('option');
+                    option.value = header;
+                    option.textContent = `🔑 ${header}`;
+                    keyColumn.appendChild(option);
+                });
+                
+                // 最初の共通列を自動選択
+                if (commonHeaders.length > 0) {
+                    keyColumn.value = commonHeaders[0];
+                }
+            }
+        }
+
+        function compareFiles() {
+            if (data1.length === 0 || data2.length === 0) {
+                alert('両方のファイルをアップロードしてください');
+                return;
+            }
+            
+            const keyColumn = document.getElementById('keyColumn').value;
+            if (!keyColumn) {
+                alert('キー列を選択してください');
+                return;
+            }
+            
+            showLoading();
+            
+            // 重い処理を非同期で実行
+            setTimeout(() => {
+                try {
+                    const result = performComparison(keyColumn);
+                    comparisonResult = result;
+                    displayResults(result);
+                    document.getElementById('results').style.display = 'block';
+                    console.log('📈 比較完了:', result.stats);
+                } catch (error) {
+                    showError(`比較処理中にエラーが発生しました: ${error.message}`);
+                }
+            }, 100);
+        }
+
+        function performComparison(keyColumn) {
+            const map1 = new Map();
+            const map2 = new Map();
+            
+            // キー列の値をチェック
+            const keyValues1 = data1.map(row => row[keyColumn]).filter(val => val !== '');
+            const keyValues2 = data2.map(row => row[keyColumn]).filter(val => val !== '');
+            
+            if (keyValues1.length === 0 || keyValues2.length === 0) {
+                throw new Error(`キー列「${keyColumn}」に有効な値がありません`);
+            }
+            
+            data1.forEach((row, index) => {
+                const key = row[keyColumn];
+                if (key && key.trim() !== '') {
+                    if (map1.has(key)) {
+                        console.warn(`重複するキー値が見つかりました (ファイル1): ${key}`);
+                    }
+                    map1.set(key, { ...row, __rowIndex: index + 2 });
+                }
+            });
+            
+            data2.forEach((row, index) => {
+                const key = row[keyColumn];
+                if (key && key.trim() !== '') {
+                    if (map2.has(key)) {
+                        console.warn(`重複するキー値が見つかりました (ファイル2): ${key}`);
+                    }
+                    map2.set(key, { ...row, __rowIndex: index + 2 });
+                }
+            });
+            
+            const added = [];
+            const removed = [];
+            const changed = [];
+            const unchanged = [];
+            
+            // 追加されたレコード
+            map2.forEach((row, key) => {
+                if (!map1.has(key)) {
+                    added.push({ key, data: row, type: 'added' });
+                }
+            });
+            
+            // 削除されたレコード
+            map1.forEach((row, key) => {
+                if (!map2.has(key)) {
+                    removed.push({ key, data: row, type: 'removed' });
+                }
+            });
+            
+            // 変更されたレコード
+            map1.forEach((row1, key) => {
+                if (map2.has(key)) {
+                    const row2 = map2.get(key);
+                    const differences = {};
+                    let hasChanges = false;
+                    
+                    const allColumns = new Set([...Object.keys(row1), ...Object.keys(row2)]);
+                    allColumns.forEach(column => {
+                        if (column !== '__rowIndex' && row1[column] !== row2[column]) {
+                            differences[column] = {
+                                old: row1[column] || '',
+                                new: row2[column] || ''
+                            };
+                            hasChanges = true;
+                        }
+                    });
+                    
+                    if (hasChanges) {
+                        changed.push({
+                            key,
+                            data1: row1,
+                            data2: row2,
+                            differences,
+                            type: 'changed'
+                        });
+                    } else {
+                        unchanged.push({ key, data: row1, type: '
