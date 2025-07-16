@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TSVファイル突合ツール</title>
+    <title>テキストファイル突合ツール</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -248,23 +248,24 @@
 </head>
 <body>
     <div class="container">
-        <h1>📊 TSVファイル突合ツール</h1>
+        <h1>📊 テキストファイル突合ツール</h1>
         
         <!-- 動作確認メッセージ -->
         <div id="status" style="background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
             ✅ ツールが正常に読み込まれました
+            <br><small>💡 対応形式: TSV (タブ区切り), CSV (カンマ区切り), セミコロン区切り, パイプ区切り</small>
         </div>
         
         <div class="upload-section">
             <div class="file-upload">
                 <h3>ファイル1</h3>
-                <input type="file" id="file1" accept=".tsv,.txt,.csv" onchange="handleFile(1, this)">
+                <input type="file" id="file1" accept=".tsv,.txt,.csv,.dat" onchange="handleFile(1, this)">
                 <div class="file-info" id="info1"></div>
             </div>
             
             <div class="file-upload">
                 <h3>ファイル2</h3>
-                <input type="file" id="file2" accept=".tsv,.txt,.csv" onchange="handleFile(2, this)">
+                <input type="file" id="file2" accept=".tsv,.txt,.csv,.dat" onchange="handleFile(2, this)">
                 <div class="file-info" id="info2"></div>
             </div>
         </div>
@@ -313,6 +314,9 @@
         console.log('🚀 TSVツール開始');
         
         // ファイル処理
+        let originalFileContents = { file1: null, file2: null };
+        let originalFileNames = { file1: null, file2: null };
+        
         function handleFile(fileNum, input) {
             const file = input.files[0];
             if (!file) return;
@@ -323,6 +327,11 @@
             reader.onload = function(e) {
                 try {
                     const content = e.target.result;
+                    
+                    // オリジナルデータを保存
+                    originalFileContents[`file${fileNum}`] = content;
+                    originalFileNames[`file${fileNum}`] = file.name;
+                    
                     const data = parseFile(content, file.name);
                     fileData[`file${fileNum}`] = data;
                     
@@ -340,6 +349,39 @@
             reader.readAsText(file, 'UTF-8');
         }
         
+        // 区切り文字変更時の再処理
+        function reprocessFiles() {
+            console.log('🔄 区切り文字変更 - ファイル再処理開始');
+            
+            try {
+                // ファイル1の再処理
+                if (originalFileContents.file1) {
+                    const data1 = parseFile(originalFileContents.file1, originalFileNames.file1);
+                    fileData.file1 = data1;
+                    updateFileInfo(1, { name: originalFileNames.file1 }, data1);
+                }
+                
+                // ファイル2の再処理
+                if (originalFileContents.file2) {
+                    const data2 = parseFile(originalFileContents.file2, originalFileNames.file2);
+                    fileData.file2 = data2;
+                    updateFileInfo(2, { name: originalFileNames.file2 }, data2);
+                }
+                
+                // キー列選択肢を更新
+                updateKeyColumnOptions();
+                
+                // 結果をクリア
+                document.getElementById('results').style.display = 'none';
+                comparisonResult = null;
+                
+                console.log('✅ ファイル再処理完了');
+            } catch (error) {
+                showError('ファイル再処理エラー: ' + error.message);
+                console.error('❌ 再処理エラー:', error);
+            }
+        }
+        
         // ファイル解析
         function parseFile(content, filename) {
             const lines = content.trim().split('\n');
@@ -347,15 +389,9 @@
                 throw new Error('ヘッダー行とデータ行が必要です');
             }
             
-            // 区切り文字判定
-            let delimiter = '\t';
-            if (filename.toLowerCase().endsWith('.csv')) {
-                delimiter = ',';
-            } else if (content.includes('\t')) {
-                delimiter = '\t';
-            } else if (content.includes(',')) {
-                delimiter = ',';
-            }
+            // 区切り文字取得
+            const delimiter = getDelimiter(content, filename);
+            console.log('🔍 使用する区切り文字:', delimiter === '\t' ? 'タブ' : delimiter === ',' ? 'カンマ' : delimiter);
             
             const headers = lines[0].split(delimiter);
             const rows = [];
@@ -373,13 +409,64 @@
                 }
             }
             
-            return { headers: headers.map(h => h.trim()), rows };
+            return { 
+                headers: headers.map(h => h.trim()), 
+                rows,
+                delimiter: delimiter === '\t' ? 'タブ' : delimiter === ',' ? 'カンマ' : delimiter
+            };
+        }
+        
+        // 区切り文字判定関数
+        function getDelimiter(content, filename) {
+            const delimiterSelect = document.getElementById('delimiter');
+            const selectedDelimiter = delimiterSelect ? delimiterSelect.value : 'auto';
+            
+            // 手動選択の場合
+            if (selectedDelimiter !== 'auto') {
+                switch (selectedDelimiter) {
+                    case 'tab': return '\t';
+                    case 'comma': return ',';
+                    case 'semicolon': return ';';
+                    case 'pipe': return '|';
+                    default: return '\t';
+                }
+            }
+            
+            // 自動判定の場合
+            const firstLine = content.split('\n')[0];
+            
+            // ファイル拡張子による判定
+            if (filename.toLowerCase().endsWith('.csv')) {
+                return ',';
+            } else if (filename.toLowerCase().endsWith('.tsv')) {
+                return '\t';
+            }
+            
+            // 内容による判定（優先順位: タブ > カンマ > セミコロン > パイプ）
+            const tabCount = (firstLine.match(/\t/g) || []).length;
+            const commaCount = (firstLine.match(/,/g) || []).length;
+            const semicolonCount = (firstLine.match(/;/g) || []).length;
+            const pipeCount = (firstLine.match(/\|/g) || []).length;
+            
+            const maxCount = Math.max(tabCount, commaCount, semicolonCount, pipeCount);
+            
+            if (maxCount === 0) {
+                console.warn('⚠️ 区切り文字を検出できませんでした。タブを使用します。');
+                return '\t';
+            }
+            
+            if (tabCount === maxCount) return '\t';
+            if (commaCount === maxCount) return ',';
+            if (semicolonCount === maxCount) return ';';
+            if (pipeCount === maxCount) return '|';
+            
+            return '\t'; // デフォルト
         }
         
         // ファイル情報更新
         function updateFileInfo(fileNum, file, data) {
             document.getElementById(`info${fileNum}`).innerHTML = 
-                `✅ ${file.name}<br>${data.rows.length} 行 × ${data.headers.length} 列`;
+                `✅ ${file.name}<br>${data.rows.length} 行 × ${data.headers.length} 列<br>📝 区切り文字: ${data.delimiter}`;
         }
         
         // キー列選択肢更新
@@ -825,6 +912,7 @@
             document.getElementById('info1').innerHTML = '';
             document.getElementById('info2').innerHTML = '';
             document.getElementById('keyColumn').innerHTML = '<option value="">キー列を選択</option>';
+            document.getElementById('delimiter').value = 'auto';
             document.getElementById('results').style.display = 'none';
             
             updateCompareButton();
