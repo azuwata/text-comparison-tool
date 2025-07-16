@@ -855,4 +855,415 @@
                             type: 'changed'
                         });
                     } else {
-                        unchanged.push({ key, data: row1, type: '
+                        unchanged.push({ key, data: row1, type: 'unchanged' });
+                    }
+                }
+            });
+            
+            return {
+                added,
+                removed,
+                changed,
+                unchanged,
+                stats: {
+                    total1: data1.length,
+                    total2: data2.length,
+                    added: added.length,
+                    removed: removed.length,
+                    changed: changed.length,
+                    unchanged: unchanged.length
+                }
+            };
+        }
+
+        function showLoading() {
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('results').innerHTML = '<div class="loading">🔄 比較を実行中...</div>';
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error';
+            errorDiv.innerHTML = `❌ ${message}`;
+            document.querySelector('.container').appendChild(errorDiv);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 5000);
+        }
+
+        function displayResults(result) {
+            displayStats(result.stats);
+            displaySummary(result);
+            displayDetails(result);
+            displayByType(result.added, 'added');
+            displayByType(result.removed, 'removed');
+            displayByType(result.changed, 'changed');
+        }
+
+        function displayStats(stats) {
+            const statsHtml = `
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total1}</div>
+                    <div class="stat-label">📄 ファイル1 レコード数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${stats.total2}</div>
+                    <div class="stat-label">📄 ファイル2 レコード数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #4caf50;">${stats.added}</div>
+                    <div class="stat-label">➕ 追加</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #f44336;">${stats.removed}</div>
+                    <div class="stat-label">➖ 削除</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #ffc107;">${stats.changed}</div>
+                    <div class="stat-label">🔄 変更</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" style="color: #6c757d;">${stats.unchanged}</div>
+                    <div class="stat-label">✅ 変更なし</div>
+                </div>
+            `;
+            document.getElementById('stats').innerHTML = statsHtml;
+        }
+
+        function displaySummary(result) {
+            const totalChanges = result.added.length + result.removed.length + result.changed.length;
+            
+            let summaryHtml = `
+                <div class="table-container">
+                    <h3 style="padding: 20px; margin: 0; background: linear-gradient(45deg, #667eea, #764ba2); color: white;">
+                        📋 比較結果サマリー
+                    </h3>
+                    <div style="padding: 20px;">
+                        <p style="font-size: 1.1rem; margin-bottom: 20px;">
+                            <strong>全体:</strong> ${totalChanges}件の変更が検出されました
+                            (追加: ${result.added.length}件、削除: ${result.removed.length}件、変更: ${result.changed.length}件)
+                        </p>
+            `;
+            
+            if (result.added.length > 0) {
+                summaryHtml += `
+                    <h4 style="color: #4caf50; margin: 20px 0 10px 0;">➕ 追加されたレコード (最初の5件)</h4>
+                    ${generateTable(result.added.slice(0, 5), 'added')}
+                `;
+            }
+            
+            if (result.removed.length > 0) {
+                summaryHtml += `
+                    <h4 style="color: #f44336; margin: 20px 0 10px 0;">➖ 削除されたレコード (最初の5件)</h4>
+                    ${generateTable(result.removed.slice(0, 5), 'removed')}
+                `;
+            }
+            
+            if (result.changed.length > 0) {
+                summaryHtml += `
+                    <h4 style="color: #ffc107; margin: 20px 0 10px 0;">🔄 変更されたレコード (最初の5件)</h4>
+                    ${generateTable(result.changed.slice(0, 5), 'changed')}
+                `;
+            }
+            
+            if (totalChanges === 0) {
+                summaryHtml += `
+                    <div style="text-align: center; padding: 40px; color: #4caf50;">
+                        <h3>🎉 ファイル間に差分はありません！</h3>
+                        <p>両方のファイルは完全に一致しています。</p>
+                    </div>
+                `;
+            }
+            
+            summaryHtml += '</div></div>';
+            document.getElementById('summary').innerHTML = summaryHtml;
+        }
+
+        function displayDetails(result) {
+            const allChanges = [
+                ...result.added,
+                ...result.removed,
+                ...result.changed
+            ];
+            
+            let detailsHtml = `
+                <div class="table-container">
+                    <h3 style="padding: 20px; margin: 0; background: linear-gradient(45deg, #667eea, #764ba2); color: white;">
+                        📊 全ての変更詳細 (${allChanges.length}件)
+                    </h3>
+            `;
+            
+            if (allChanges.length > 0) {
+                detailsHtml += generateTable(allChanges, 'all');
+            } else {
+                detailsHtml += `
+                    <div style="padding: 40px; text-align: center; color: #666;">
+                        変更がありません
+                    </div>
+                `;
+            }
+            
+            detailsHtml += '</div>';
+            document.getElementById('details').innerHTML = detailsHtml;
+        }
+
+        function displayByType(data, type) {
+            const titles = {
+                added: '➕ 追加されたレコード',
+                removed: '➖ 削除されたレコード',
+                changed: '🔄 変更されたレコード'
+            };
+            
+            let html = `
+                <div class="table-container">
+                    <h3 style="padding: 20px; margin: 0; background: linear-gradient(45deg, #667eea, #764ba2); color: white;">
+                        ${titles[type]} (${data.length}件)
+                    </h3>
+            `;
+            
+            if (data.length > 0) {
+                html += generateTable(data, type);
+            } else {
+                html += `
+                    <div style="padding: 40px; text-align: center; color: #666;">
+                        該当するデータがありません
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            document.getElementById(type).innerHTML = html;
+        }
+
+        function generateTable(data, type) {
+            if (data.length === 0) {
+                return '<p style="padding: 20px;">該当するデータがありません。</p>';
+            }
+            
+            const allColumns = new Set();
+            data.forEach(item => {
+                if (item.data) {
+                    Object.keys(item.data).forEach(col => {
+                        if (col !== '__rowIndex') allColumns.add(col);
+                    });
+                }
+                if (item.data1) {
+                    Object.keys(item.data1).forEach(col => {
+                        if (col !== '__rowIndex') allColumns.add(col);
+                    });
+                }
+                if (item.data2) {
+                    Object.keys(item.data2).forEach(col => {
+                        if (col !== '__rowIndex') allColumns.add(col);
+                    });
+                }
+            });
+            
+            const columns = Array.from(allColumns);
+            
+            let html = '<table><thead><tr>';
+            html += '<th>🏷️ 変更タイプ</th>';
+            html += '<th>🔑 キー</th>';
+            columns.forEach(col => {
+                html += `<th>📊 ${col}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            data.forEach(item => {
+                const rowClass = `diff-${item.type}`;
+                html += `<tr class="${rowClass}">`;
+                
+                // 変更タイプ
+                const typeLabels = {
+                    added: '➕ 追加',
+                    removed: '➖ 削除',
+                    changed: '🔄 変更'
+                };
+                html += `<td><strong>${typeLabels[item.type] || item.type}</strong></td>`;
+                
+                // キー
+                html += `<td><strong>${item.key}</strong></td>`;
+                
+                // データ列
+                columns.forEach(col => {
+                    if (item.type === 'changed' && item.differences && item.differences[col]) {
+                        const diff = item.differences[col];
+                        html += `<td>
+                            <div style="color: #f44336; font-size: 0.9rem;">
+                                <strong>旧:</strong> ${escapeHtml(diff.old || '')}
+                            </div>
+                            <div style="color: #4caf50; font-size: 0.9rem;">
+                                <strong>新:</strong> ${escapeHtml(diff.new || '')}
+                            </div>
+                        </td>`;
+                    } else {
+                        const value = item.data?.[col] || item.data1?.[col] || item.data2?.[col] || '';
+                        html += `<td>${escapeHtml(value)}</td>`;
+                    }
+                });
+                
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table>';
+            return html;
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showTab(tabName) {
+            // タブの切り替え
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function exportToCSV(type) {
+            if (!comparisonResult) {
+                alert('比較結果がありません');
+                return;
+            }
+            
+            let dataToExport = [];
+            
+            if (type === 'all') {
+                dataToExport = [
+                    ...comparisonResult.added,
+                    ...comparisonResult.removed,
+                    ...comparisonResult.changed,
+                    ...comparisonResult.unchanged
+                ];
+            } else {
+                dataToExport = [
+                    ...comparisonResult.added,
+                    ...comparisonResult.removed,
+                    ...comparisonResult.changed
+                ];
+            }
+            
+            if (dataToExport.length === 0) {
+                alert('エクスポートするデータがありません');
+                return;
+            }
+            
+            // CSV作成
+            const allColumns = new Set();
+            dataToExport.forEach(item => {
+                if (item.data) {
+                    Object.keys(item.data).forEach(col => {
+                        if (col !== '__rowIndex') allColumns.add(col);
+                    });
+                }
+                if (item.data1) {
+                    Object.keys(item.data1).forEach(col => {
+                        if (col !== '__rowIndex') allColumns.add(col);
+                    });
+                }
+                if (item.data2) {
+                    Object.keys(item.data2).forEach(col => {
+                        if (col !== '__rowIndex') allColumns.add(col);
+                    });
+                }
+            });
+            
+            const columns = Array.from(allColumns);
+            let csvContent = '\uFEFF'; // BOM for Excel compatibility
+            csvContent += '変更タイプ,キー,' + columns.join(',') + '\n';
+            
+            dataToExport.forEach(item => {
+                const typeLabels = { 
+                    added: '追加', 
+                    removed: '削除', 
+                    changed: '変更',
+                    unchanged: '変更なし'
+                };
+                let row = [typeLabels[item.type] || item.type, item.key];
+                
+                columns.forEach(col => {
+                    if (item.type === 'changed' && item.differences && item.differences[col]) {
+                        const diff = item.differences[col];
+                        row.push(`"旧:${(diff.old || '').replace(/"/g, '""')} 新:${(diff.new || '').replace(/"/g, '""')}"`);
+                    } else {
+                        const value = item.data?.[col] || item.data1?.[col] || item.data2?.[col] || '';
+                        row.push(`"${value.replace(/"/g, '""')}"`);
+                    }
+                });
+                
+                csvContent += row.join(',') + '\n';
+            });
+            
+            // ダウンロード
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            const date = new Date().toISOString().split('T')[0];
+            link.download = `tsv_comparison_${type}_${date}.csv`;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            console.log(`📁 CSV出力完了: ${dataToExport.length}件のデータをエクスポートしました`);
+        }
+
+        function clearAll() {
+            if (comparisonResult && !confirm('現在の比較結果をクリアしますか？')) {
+                return;
+            }
+            
+            data1 = [];
+            data2 = [];
+            headers1 = [];
+            headers2 = [];
+            comparisonResult = null;
+            
+            document.getElementById('file1').value = '';
+            document.getElementById('file2').value = '';
+            document.getElementById('info1').innerHTML = '';
+            document.getElementById('info2').innerHTML = '';
+            document.getElementById('keyColumn').innerHTML = '<option value="">キー列を選択してください</option>';
+            document.getElementById('results').style.display = 'none';
+            
+            // エラーメッセージを削除
+            document.querySelectorAll('.error').forEach(error => error.remove());
+            
+            console.log('🗑️ データをクリアしました');
+        }
+
+        // キーボードショートカット
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key) {
+                    case 'r':
+                        e.preventDefault();
+                        if (data1.length > 0 && data2.length > 0) {
+                            compareFiles();
+                        }
+                        break;
+                    case 'n':
+                        e.preventDefault();
+                        clearAll();
+                        break;
+                }
+            }
+        });
+
+        // パフォーマンス監視
+        window.addEventListener('load', function() {
+            const loadTime = performance.now();
+            console.log(`⚡ ページ読み込み完了: ${Math.round(loadTime)}ms`);
+        });
+    </script>
+</body>
+</html>
