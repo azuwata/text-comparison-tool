@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>テキストファイル突合ツール</title>
+    <title>TSVファイル突合ツール</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -248,7 +248,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📊 テキストファイル突合ツール</h1>
+        <h1>📊 TSVファイル突合ツール</h1>
         
         <!-- 動作確認メッセージ -->
         <div id="status" style="background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
@@ -278,8 +278,8 @@
                 </select>
             </div>
             
-            <button onclick="compareFiles()" id="compareBtn" disabled>比較実行</button>
-            <button onclick="clearAll()">クリア</button>
+            <button onclick="compareFiles()" id="compareBtn" disabled>🚀 比較実行</button>
+            <button onclick="clearAll()" style="background: #dc3545;">🗑️ 全クリア</button>
         </div>
         
         <div class="results" id="results" style="display: none;">
@@ -371,8 +371,8 @@
                 // キー列選択肢を更新
                 updateKeyColumnOptions();
                 
-                // 結果をクリア
-                document.getElementById('results').style.display = 'none';
+                // 結果を完全にクリア
+                resetResultsDisplay();
                 comparisonResult = null;
                 
                 console.log('✅ ファイル再処理完了');
@@ -904,22 +904,104 @@
         
         // クリア
         function clearAll() {
+            if (comparisonResult && !confirm('現在の比較結果をクリアしますか？')) {
+                return;
+            }
+            
+            // データをクリア
             fileData = { file1: null, file2: null };
             comparisonResult = null;
+            originalFileContents = { file1: null, file2: null };
+            originalFileNames = { file1: null, file2: null };
             
+            // ファイル入力をクリア
             document.getElementById('file1').value = '';
             document.getElementById('file2').value = '';
             document.getElementById('info1').innerHTML = '';
             document.getElementById('info2').innerHTML = '';
+            
+            // 選択項目をリセット
             document.getElementById('keyColumn').innerHTML = '<option value="">キー列を選択</option>';
             document.getElementById('delimiter').value = 'auto';
-            document.getElementById('results').style.display = 'none';
             
+            // 結果エリアを完全にクリア
+            const resultsEl = document.getElementById('results');
+            resultsEl.style.display = 'none';
+            
+            // 各結果要素を個別にクリア
+            const elementsToeClear = ['stats', 'summary', 'details', 'added', 'removed', 'changed'];
+            elementsToeClear.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.innerHTML = '';
+                }
+            });
+            
+            // タブを初期状態に戻す
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // 最初のタブをアクティブに
+            const firstTab = document.querySelector('.tab');
+            const firstContent = document.getElementById('summary');
+            if (firstTab && firstContent) {
+                firstTab.classList.add('active');
+                firstContent.classList.add('active');
+            }
+            
+            // ボタン状態を更新
             updateCompareButton();
-            console.log('🗑️ クリア完了');
+            
+            // エラーメッセージも削除
+            document.querySelectorAll('.error').forEach(error => error.remove());
+            
+            console.log('🗑️ 全てクリア完了 - ファイル、結果、設定をリセットしました');
         }
         
         // ユーティリティ関数
+        function resetResultsDisplay() {
+            // 結果エリアを非表示
+            const resultsEl = document.getElementById('results');
+            if (resultsEl) {
+                resultsEl.style.display = 'none';
+            }
+            
+            // 各結果コンテンツをクリア
+            const resultElements = [
+                'stats', 'summary', 'details', 
+                'added', 'removed', 'changed'
+            ];
+            
+            resultElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.innerHTML = '';
+                }
+            });
+            
+            // タブ状態をリセット
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // サマリータブをアクティブに
+            const summaryTab = document.querySelector('.tab');
+            const summaryContent = document.getElementById('summary');
+            if (summaryTab && summaryContent) {
+                summaryTab.classList.add('active');
+                summaryContent.classList.add('active');
+            }
+            
+            console.log('🧹 結果表示をリセットしました');
+        }
+        
         function showError(message) {
             console.error('🚨 エラー:', message);
             const error = document.createElement('div');
