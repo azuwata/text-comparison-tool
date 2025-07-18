@@ -258,7 +258,6 @@
     <div class="container">
         <h1>📊 テキストファイル突合ツール</h1>
         
-        <!-- 動作確認メッセージ -->
         <div id="status" style="background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
             ✅ ツールが正常に読み込まれました
             <br><small>💡 対応形式: TSV (タブ区切り), CSV (カンマ区切り), セミコロン区切り, パイプ区切り</small>
@@ -267,38 +266,49 @@
         <div class="upload-section">
             <div class="file-upload">
                 <h3>ファイル1</h3>
-                <input type="file" id="file1" accept=".tsv,.txt,.csv,.dat" onchange="handleFile(1, this)">
+                <input type="file" id="file1" accept=".tsv,.txt,.csv,.dat">
                 <div class="file-info" id="info1"></div>
             </div>
             
             <div class="file-upload">
                 <h3>ファイル2</h3>
-                <input type="file" id="file2" accept=".tsv,.txt,.csv,.dat" onchange="handleFile(2, this)">
+                <input type="file" id="file2" accept=".tsv,.txt,.csv,.dat">
                 <div class="file-info" id="info2"></div>
             </div>
         </div>
         
         <div class="controls">
             <div class="control-group">
-                <label for="keyColumn">キー列</label>
+                <label for="delimiter">📝 区切り文字</label>
+                <select id="delimiter">
+                    <option value="auto">自動判定</option>
+                    <option value="tab">タブ (TSV)</option>
+                    <option value="comma">カンマ (CSV)</option>
+                    <option value="semicolon">セミコロン (;)</option>
+                    <option value="pipe">パイプ (|)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="keyColumn">🔑 キー列</label>
                 <select id="keyColumn">
                     <option value="">キー列を選択</option>
                 </select>
             </div>
             
-            <button onclick="compareFiles()" id="compareBtn" disabled>🚀 比較実行</button>
-            <button type="button" onclick="clearAll()" id="clearBtn">🗑️ 全クリア</button>
+            <button type="button" id="compareBtn" disabled>🚀 比較実行</button>
+            <button type="button" id="clearBtn">🗑️ 全クリア</button>
         </div>
         
         <div class="results" id="results" style="display: none;">
             <div class="stats" id="stats"></div>
             
             <div class="tabs">
-                <div class="tab active" onclick="showTab('summary')">サマリー</div>
-                <div class="tab" onclick="showTab('details')">詳細</div>
-                <div class="tab" onclick="showTab('added')">追加</div>
-                <div class="tab" onclick="showTab('removed')">削除</div>
-                <div class="tab" onclick="showTab('changed')">変更</div>
+                <div class="tab active" onclick="showTab('summary')">📋 サマリー</div>
+                <div class="tab" onclick="showTab('details')">📊 詳細</div>
+                <div class="tab" onclick="showTab('added')">➕ 追加</div>
+                <div class="tab" onclick="showTab('removed')">➖ 削除</div>
+                <div class="tab" onclick="showTab('changed')">🔄 変更</div>
             </div>
             
             <div class="tab-content active" id="summary"></div>
@@ -308,8 +318,8 @@
             <div class="tab-content" id="changed"></div>
             
             <div class="export-buttons">
-                <button class="export-btn" onclick="exportCSV('all')">全結果CSV出力</button>
-                <button class="export-btn" onclick="exportCSV('diff')">差分のみCSV出力</button>
+                <button class="export-btn" onclick="exportCSV('all')">📁 全結果CSV出力</button>
+                <button class="export-btn" onclick="exportCSV('diff')">🔍 差分のみCSV出力</button>
             </div>
         </div>
     </div>
@@ -318,13 +328,71 @@
         // グローバル変数
         let fileData = { file1: null, file2: null };
         let comparisonResult = null;
-        
-        console.log('🚀 テキストファイルツール開始');
-        
-        // ファイル処理
         let originalFileContents = { file1: null, file2: null };
         let originalFileNames = { file1: null, file2: null };
         
+        console.log('🚀 テキストファイルツール開始');
+        
+        // 全クリア関数
+        function forceClear() {
+            try {
+                fileData = { file1: null, file2: null };
+                comparisonResult = null;
+                originalFileContents = { file1: null, file2: null };
+                originalFileNames = { file1: null, file2: null };
+                
+                const file1Input = document.getElementById('file1');
+                const file2Input = document.getElementById('file2');
+                const info1 = document.getElementById('info1');
+                const info2 = document.getElementById('info2');
+                
+                if (file1Input) file1Input.value = '';
+                if (file2Input) file2Input.value = '';
+                if (info1) info1.innerHTML = '';
+                if (info2) info2.innerHTML = '';
+                
+                const keyColumn = document.getElementById('keyColumn');
+                const delimiter = document.getElementById('delimiter');
+                
+                if (keyColumn) keyColumn.innerHTML = '<option value="">キー列を選択</option>';
+                if (delimiter) delimiter.value = 'auto';
+                
+                resetResultsDisplay();
+                updateCompareButton();
+                
+                document.querySelectorAll('.error').forEach(error => error.remove());
+                
+                console.log('🗑️ 全クリア完了');
+                
+            } catch (error) {
+                console.error('❌ クリア処理エラー:', error);
+                alert('クリア処理中にエラーが発生しました: ' + error.message);
+            }
+        }
+        
+        // 結果表示リセット
+        function resetResultsDisplay() {
+            const resultsEl = document.getElementById('results');
+            if (resultsEl) resultsEl.style.display = 'none';
+            
+            const resultElements = ['stats', 'summary', 'details', 'added', 'removed', 'changed'];
+            resultElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.innerHTML = '';
+            });
+            
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            const summaryTab = document.querySelector('.tab');
+            const summaryContent = document.getElementById('summary');
+            if (summaryTab && summaryContent) {
+                summaryTab.classList.add('active');
+                summaryContent.classList.add('active');
+            }
+        }
+        
+        // ファイル処理
         function handleFile(fileNum, input) {
             const file = input.files[0];
             if (!file) return;
@@ -335,8 +403,6 @@
             reader.onload = function(e) {
                 try {
                     const content = e.target.result;
-                    
-                    // オリジナルデータを保存
                     originalFileContents[`file${fileNum}`] = content;
                     originalFileNames[`file${fileNum}`] = file.name;
                     
@@ -357,39 +423,6 @@
             reader.readAsText(file, 'UTF-8');
         }
         
-        // 区切り文字変更時の再処理
-        function reprocessFiles() {
-            console.log('🔄 区切り文字変更 - ファイル再処理開始');
-            
-            try {
-                // ファイル1の再処理
-                if (originalFileContents.file1) {
-                    const data1 = parseFile(originalFileContents.file1, originalFileNames.file1);
-                    fileData.file1 = data1;
-                    updateFileInfo(1, { name: originalFileNames.file1 }, data1);
-                }
-                
-                // ファイル2の再処理
-                if (originalFileContents.file2) {
-                    const data2 = parseFile(originalFileContents.file2, originalFileNames.file2);
-                    fileData.file2 = data2;
-                    updateFileInfo(2, { name: originalFileNames.file2 }, data2);
-                }
-                
-                // キー列選択肢を更新
-                updateKeyColumnOptions();
-                
-                // 結果を完全にクリア
-                resetResultsDisplay();
-                comparisonResult = null;
-                
-                console.log('✅ ファイル再処理完了');
-            } catch (error) {
-                showError('ファイル再処理エラー: ' + error.message);
-                console.error('❌ 再処理エラー:', error);
-            }
-        }
-        
         // ファイル解析
         function parseFile(content, filename) {
             const lines = content.trim().split('\n');
@@ -397,7 +430,6 @@
                 throw new Error('ヘッダー行とデータ行が必要です');
             }
             
-            // 区切り文字取得
             const delimiter = getDelimiter(content, filename);
             console.log('🔍 使用する区切り文字:', delimiter === '\t' ? 'タブ' : delimiter === ',' ? 'カンマ' : delimiter);
             
@@ -411,7 +443,6 @@
                     row[header.trim()] = (values[index] || '').trim();
                 });
                 
-                // 空行をスキップ
                 if (Object.values(row).some(val => val !== '')) {
                     rows.push(row);
                 }
@@ -424,12 +455,11 @@
             };
         }
         
-        // 区切り文字判定関数
+        // 区切り文字判定
         function getDelimiter(content, filename) {
             const delimiterSelect = document.getElementById('delimiter');
             const selectedDelimiter = delimiterSelect ? delimiterSelect.value : 'auto';
             
-            // 手動選択の場合
             if (selectedDelimiter !== 'auto') {
                 switch (selectedDelimiter) {
                     case 'tab': return '\t';
@@ -440,17 +470,14 @@
                 }
             }
             
-            // 自動判定の場合
             const firstLine = content.split('\n')[0];
             
-            // ファイル拡張子による判定
             if (filename.toLowerCase().endsWith('.csv')) {
                 return ',';
             } else if (filename.toLowerCase().endsWith('.tsv')) {
                 return '\t';
             }
             
-            // 内容による判定（優先順位: タブ > カンマ > セミコロン > パイプ）
             const tabCount = (firstLine.match(/\t/g) || []).length;
             const commaCount = (firstLine.match(/,/g) || []).length;
             const semicolonCount = (firstLine.match(/;/g) || []).length;
@@ -468,7 +495,7 @@
             if (semicolonCount === maxCount) return ';';
             if (pipeCount === maxCount) return '|';
             
-            return '\t'; // デフォルト
+            return '\t';
         }
         
         // ファイル情報更新
@@ -506,6 +533,34 @@
             btn.disabled = !(fileData.file1 && fileData.file2);
         }
         
+        // 区切り文字変更時の再処理
+        function reprocessFiles() {
+            console.log('🔄 区切り文字変更 - ファイル再処理開始');
+            
+            try {
+                if (originalFileContents.file1) {
+                    const data1 = parseFile(originalFileContents.file1, originalFileNames.file1);
+                    fileData.file1 = data1;
+                    updateFileInfo(1, { name: originalFileNames.file1 }, data1);
+                }
+                
+                if (originalFileContents.file2) {
+                    const data2 = parseFile(originalFileContents.file2, originalFileNames.file2);
+                    fileData.file2 = data2;
+                    updateFileInfo(2, { name: originalFileNames.file2 }, data2);
+                }
+                
+                updateKeyColumnOptions();
+                resetResultsDisplay();
+                comparisonResult = null;
+                
+                console.log('✅ ファイル再処理完了');
+            } catch (error) {
+                showError('ファイル再処理エラー: ' + error.message);
+                console.error('❌ 再処理エラー:', error);
+            }
+        }
+        
         // ファイル比較
         function compareFiles() {
             const keyColumn = document.getElementById('keyColumn').value;
@@ -519,11 +574,9 @@
                 return;
             }
             
-            // 結果エリアを表示（HTML構造を保持）
             const resultsEl = document.getElementById('results');
             resultsEl.style.display = 'block';
             
-            // ローディング表示（個別要素に）
             const statsEl = document.getElementById('stats');
             const summaryEl = document.getElementById('summary');
             
@@ -550,7 +603,6 @@
             const map1 = new Map();
             const map2 = new Map();
             
-            // データをマップに格納
             fileData.file1.rows.forEach(row => {
                 const key = row[keyColumn];
                 if (key) map1.set(key, row);
@@ -568,21 +620,18 @@
             const changed = [];
             const unchanged = [];
             
-            // 追加されたレコード
             map2.forEach((row, key) => {
                 if (!map1.has(key)) {
                     added.push({ key, data: row, type: 'added' });
                 }
             });
             
-            // 削除されたレコード
             map1.forEach((row, key) => {
                 if (!map2.has(key)) {
                     removed.push({ key, data: row, type: 'removed' });
                 }
             });
             
-            // 変更されたレコード
             map1.forEach((row1, key) => {
                 if (map2.has(key)) {
                     const row2 = map2.get(key);
@@ -635,7 +684,6 @@
         function displayResults(result) {
             console.log('🎨 結果表示開始');
             
-            // 要素の存在確認
             const statsEl = document.getElementById('stats');
             const summaryEl = document.getElementById('summary');
             const detailsEl = document.getElementById('details');
@@ -666,10 +714,7 @@
         // 統計表示
         function displayStats(stats) {
             const statsEl = document.getElementById('stats');
-            if (!statsEl) {
-                console.error('❌ stats要素が見つかりません');
-                return;
-            }
+            if (!statsEl) return;
             
             try {
                 statsEl.innerHTML = `
@@ -698,20 +743,15 @@
                         <div class="stat-label">変更なし</div>
                     </div>
                 `;
-                console.log('📊 統計表示完了');
             } catch (error) {
                 console.error('❌ 統計表示エラー:', error);
-                showError('統計表示エラー: ' + error.message);
             }
         }
         
         // サマリー表示
         function displaySummary(result) {
             const summaryEl = document.getElementById('summary');
-            if (!summaryEl) {
-                console.error('❌ summary要素が見つかりません');
-                return;
-            }
+            if (!summaryEl) return;
             
             try {
                 const total = result.added.length + result.removed.length + result.changed.length;
@@ -738,38 +778,28 @@
                 }
                 
                 summaryEl.innerHTML = html;
-                console.log('📋 サマリー表示完了');
             } catch (error) {
                 console.error('❌ サマリー表示エラー:', error);
-                showError('サマリー表示エラー: ' + error.message);
             }
         }
         
         // 詳細表示
         function displayDetails(result) {
             const detailsEl = document.getElementById('details');
-            if (!detailsEl) {
-                console.error('❌ details要素が見つかりません');
-                return;
-            }
+            if (!detailsEl) return;
             
             try {
                 const all = [...result.added, ...result.removed, ...result.changed];
                 detailsEl.innerHTML = `<h3>全変更詳細 (${all.length}件)</h3>` + generateTable(all);
-                console.log('📊 詳細表示完了');
             } catch (error) {
                 console.error('❌ 詳細表示エラー:', error);
-                showError('詳細表示エラー: ' + error.message);
             }
         }
         
         // タイプ別表示
         function displayByType(data, type) {
             const element = document.getElementById(type);
-            if (!element) {
-                console.error(`❌ ${type}要素が見つかりません`);
-                return;
-            }
+            if (!element) return;
             
             try {
                 const titles = {
@@ -778,10 +808,8 @@
                     changed: '変更されたレコード'
                 };
                 element.innerHTML = `<h3>${titles[type]} (${data.length}件)</h3>` + generateTable(data);
-                console.log(`📊 ${type}表示完了`);
             } catch (error) {
                 console.error(`❌ ${type}表示エラー:`, error);
-                showError(`${type}表示エラー: ` + error.message);
             }
         }
         
@@ -880,127 +908,41 @@
             });
             
             const columns = Array.from(allColumns);
-            let csv = 'タイプ,キー,' + columns.join(',') + '\n';
+            let csv = '\uFEFF'; // BOM for Excel compatibility
+            csv += 'タイプ,キー,' + columns.join(',') + '\n';
             
             data.forEach(item => {
                 const types = { added: '追加', removed: '削除', changed: '変更', unchanged: '変更なし' };
                 let row = [types[item.type], item.key];
                 
                 columns.forEach(col => {
-                    if (item.type === 'changed' && item.differences[col]) {
+                    if (item.type === 'changed' && item.differences && item.differences[col]) {
                         const diff = item.differences[col];
-                        row.push(`"旧:${diff.old} 新:${diff.new}"`);
+                        row.push(`"旧:${(diff.old || '').replace(/"/g, '""')} 新:${(diff.new || '').replace(/"/g, '""')}"`);
                     } else {
                         const value = item.data?.[col] || item.data1?.[col] || item.data2?.[col] || '';
-                        row.push(`"${value}"`);
+                        row.push(`"${value.replace(/"/g, '""')}"`);
                     }
                 });
                 
                 csv += row.join(',') + '\n';
             });
             
-            const blob = new Blob([csv], { type: 'text/csv' });
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `tsv_comparison_${type}_${new Date().toISOString().split('T')[0]}.csv`;
+            a.download = `text_file_comparison_${type}_${new Date().toISOString().split('T')[0]}.csv`;
+            a.style.display = 'none';
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             URL.revokeObjectURL(url);
             
             console.log('📁 CSV出力完了');
         }
         
-        // クリア
-        function clearAll() {
-            console.log('🗑️ クリア関数が呼ばれました');
-            
-            try {
-                // 確認ダイアログ（結果がある場合のみ）
-                if (comparisonResult && !confirm('現在の比較結果をクリアしますか？')) {
-                    return;
-                }
-                
-                // データをクリア
-                fileData = { file1: null, file2: null };
-                comparisonResult = null;
-                originalFileContents = { file1: null, file2: null };
-                originalFileNames = { file1: null, file2: null };
-                
-                // ファイル入力をクリア
-                const file1Input = document.getElementById('file1');
-                const file2Input = document.getElementById('file2');
-                const info1 = document.getElementById('info1');
-                const info2 = document.getElementById('info2');
-                
-                if (file1Input) file1Input.value = '';
-                if (file2Input) file2Input.value = '';
-                if (info1) info1.innerHTML = '';
-                if (info2) info2.innerHTML = '';
-                
-                // 選択項目をリセット
-                const keyColumn = document.getElementById('keyColumn');
-                const delimiter = document.getElementById('delimiter');
-                
-                if (keyColumn) keyColumn.innerHTML = '<option value="">キー列を選択</option>';
-                if (delimiter) delimiter.value = 'auto';
-                
-                // 結果エリアを完全にクリア
-                resetResultsDisplay();
-                
-                // ボタン状態を更新
-                updateCompareButton();
-                
-                // エラーメッセージも削除
-                document.querySelectorAll('.error').forEach(error => error.remove());
-                
-                console.log('✅ 全てクリア完了');
-                
-            } catch (error) {
-                console.error('❌ クリア処理エラー:', error);
-                alert('クリア処理中にエラーが発生しました: ' + error.message);
-            }
-        }
-        
-        // ユーティリティ関数
-        function resetResultsDisplay() {
-            // 結果エリアを非表示
-            const resultsEl = document.getElementById('results');
-            if (resultsEl) {
-                resultsEl.style.display = 'none';
-            }
-            
-            // 各結果コンテンツをクリア
-            const resultElements = [
-                'stats', 'summary', 'details', 
-                'added', 'removed', 'changed'
-            ];
-            
-            resultElements.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.innerHTML = '';
-                }
-            });
-            
-            // タブ状態をリセット
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            // サマリータブをアクティブに
-            const summaryTab = document.querySelector('.tab');
-            const summaryContent = document.getElementById('summary');
-            if (summaryTab && summaryContent) {
-                summaryTab.classList.add('active');
-                summaryContent.classList.add('active');
-            }
-            
-            console.log('🧹 結果表示をリセットしました');
-        }
-        
+        // エラー表示
         function showError(message) {
             console.error('🚨 エラー:', message);
             const error = document.createElement('div');
@@ -1011,26 +953,34 @@
             setTimeout(() => error.remove(), 5000);
         }
         
-        // 初期化完了
+        // 初期化
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 DOM読み込み完了');
             
-            // 必要な要素の存在確認
-            const requiredElements = ['stats', 'summary', 'details', 'added', 'removed', 'changed'];
-            const missingElements = [];
-            
-            requiredElements.forEach(id => {
-                if (!document.getElementById(id)) {
-                    missingElements.push(id);
-                }
+            // ファイル入力にイベントリスナーを追加
+            document.getElementById('file1').addEventListener('change', function(e) {
+                handleFile(1, this);
             });
             
-            if (missingElements.length > 0) {
-                console.error('❌ 不足している要素:', missingElements);
-                showError('初期化エラー: 必要な画面要素が不足しています - ' + missingElements.join(', '));
-            } else {
-                console.log('✅ 全ての必要要素が確認できました');
-            }
+            document.getElementById('file2').addEventListener('change', function(e) {
+                handleFile(2, this);
+            });
+            
+            // 区切り文字変更にイベントリスナーを追加
+            document.getElementById('delimiter').addEventListener('change', function() {
+                reprocessFiles();
+            });
+            
+            // ボタンにイベントリスナーを追加
+            document.getElementById('compareBtn').addEventListener('click', function() {
+                compareFiles();
+            });
+            
+            document.getElementById('clearBtn').addEventListener('click', function() {
+                forceClear();
+            });
+            
+            console.log('✅ 全ての機能が初期化されました');
         });
         
         console.log('✅ テキストファイル突合ツール初期化完了');
