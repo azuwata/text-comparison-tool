@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TSVファイル突合ツール</title>
+    <title>テキストファイル突合ツール</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -90,6 +90,14 @@
         button:disabled {
             background: #ccc;
             cursor: not-allowed;
+        }
+        
+        #clearBtn {
+            background: #dc3545 !important;
+        }
+        
+        #clearBtn:hover {
+            background: #c82333 !important;
         }
         
         .results {
@@ -248,7 +256,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>📊 TSVファイル突合ツール</h1>
+        <h1>📊 テキストファイル突合ツール</h1>
         
         <!-- 動作確認メッセージ -->
         <div id="status" style="background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-bottom: 20px;">
@@ -279,7 +287,7 @@
             </div>
             
             <button onclick="compareFiles()" id="compareBtn" disabled>🚀 比較実行</button>
-            <button onclick="clearAll()" style="background: #dc3545;">🗑️ 全クリア</button>
+            <button type="button" onclick="clearAll()" id="clearBtn">🗑️ 全クリア</button>
         </div>
         
         <div class="results" id="results" style="display: none;">
@@ -311,7 +319,7 @@
         let fileData = { file1: null, file2: null };
         let comparisonResult = null;
         
-        console.log('🚀 TSVツール開始');
+        console.log('🚀 テキストファイルツール開始');
         
         // ファイル処理
         let originalFileContents = { file1: null, file2: null };
@@ -904,62 +912,53 @@
         
         // クリア
         function clearAll() {
-            if (comparisonResult && !confirm('現在の比較結果をクリアしますか？')) {
-                return;
-            }
+            console.log('🗑️ クリア関数が呼ばれました');
             
-            // データをクリア
-            fileData = { file1: null, file2: null };
-            comparisonResult = null;
-            originalFileContents = { file1: null, file2: null };
-            originalFileNames = { file1: null, file2: null };
-            
-            // ファイル入力をクリア
-            document.getElementById('file1').value = '';
-            document.getElementById('file2').value = '';
-            document.getElementById('info1').innerHTML = '';
-            document.getElementById('info2').innerHTML = '';
-            
-            // 選択項目をリセット
-            document.getElementById('keyColumn').innerHTML = '<option value="">キー列を選択</option>';
-            document.getElementById('delimiter').value = 'auto';
-            
-            // 結果エリアを完全にクリア
-            const resultsEl = document.getElementById('results');
-            resultsEl.style.display = 'none';
-            
-            // 各結果要素を個別にクリア
-            const elementsToeClear = ['stats', 'summary', 'details', 'added', 'removed', 'changed'];
-            elementsToeClear.forEach(id => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.innerHTML = '';
+            try {
+                // 確認ダイアログ（結果がある場合のみ）
+                if (comparisonResult && !confirm('現在の比較結果をクリアしますか？')) {
+                    return;
                 }
-            });
-            
-            // タブを初期状態に戻す
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.classList.remove('active');
-            });
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            
-            // 最初のタブをアクティブに
-            const firstTab = document.querySelector('.tab');
-            const firstContent = document.getElementById('summary');
-            if (firstTab && firstContent) {
-                firstTab.classList.add('active');
-                firstContent.classList.add('active');
+                
+                // データをクリア
+                fileData = { file1: null, file2: null };
+                comparisonResult = null;
+                originalFileContents = { file1: null, file2: null };
+                originalFileNames = { file1: null, file2: null };
+                
+                // ファイル入力をクリア
+                const file1Input = document.getElementById('file1');
+                const file2Input = document.getElementById('file2');
+                const info1 = document.getElementById('info1');
+                const info2 = document.getElementById('info2');
+                
+                if (file1Input) file1Input.value = '';
+                if (file2Input) file2Input.value = '';
+                if (info1) info1.innerHTML = '';
+                if (info2) info2.innerHTML = '';
+                
+                // 選択項目をリセット
+                const keyColumn = document.getElementById('keyColumn');
+                const delimiter = document.getElementById('delimiter');
+                
+                if (keyColumn) keyColumn.innerHTML = '<option value="">キー列を選択</option>';
+                if (delimiter) delimiter.value = 'auto';
+                
+                // 結果エリアを完全にクリア
+                resetResultsDisplay();
+                
+                // ボタン状態を更新
+                updateCompareButton();
+                
+                // エラーメッセージも削除
+                document.querySelectorAll('.error').forEach(error => error.remove());
+                
+                console.log('✅ 全てクリア完了');
+                
+            } catch (error) {
+                console.error('❌ クリア処理エラー:', error);
+                alert('クリア処理中にエラーが発生しました: ' + error.message);
             }
-            
-            // ボタン状態を更新
-            updateCompareButton();
-            
-            // エラーメッセージも削除
-            document.querySelectorAll('.error').forEach(error => error.remove());
-            
-            console.log('🗑️ 全てクリア完了 - ファイル、結果、設定をリセットしました');
         }
         
         // ユーティリティ関数
@@ -1034,7 +1033,7 @@
             }
         });
         
-        console.log('✅ TSVツール初期化完了');
+        console.log('✅ テキストファイル突合ツール初期化完了');
     </script>
 </body>
 </html>
